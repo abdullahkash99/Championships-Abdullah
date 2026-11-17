@@ -26,6 +26,24 @@ function okToken(t) {
   return sig.length === good.length && crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(good));
 }
 const cleanName = n => String(n || '').trim().slice(0, 40);
+const norm = s => String(s || '').trim().replace(/\s+/g, ' ');
+const triple = s => norm(s).split(' ').filter(Boolean).length >= 3;
+function validate(t, b) {
+  if (!TIDS.includes(t)) return null;
+  if (t === 'tennis') {
+    const n = norm(cleanName(b.team || b.name)), p1 = norm(cleanName(b.p1)), p2 = norm(cleanName(b.p2));
+    if (!n || !triple(p1) || !triple(p2) || p1 === p2) return null;
+    return { n, t, p1, p2 };
+  }
+  const n = norm(cleanName(b.name));
+  return triple(n) ? { n, t } : null;
+}
+const namesOf = r => r.t === 'tennis' ? [r.p1, r.p2] : [r.n];
+function taken(rec, exceptId) {
+  const used = new Set();
+  for (const [id, r] of Object.entries(state.regs)) if (id !== exceptId) namesOf(r).forEach(x => used.add(norm(x)));
+  return namesOf(rec).some(x => used.has(norm(x)));
+}
 const send = (res, code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8' }); res.end(JSON.stringify(obj)); };
 
 function readBody(req) {
@@ -49,11 +67,13 @@ http.createServer(async (req, res) => {
   if (m === 'GET' && url === '/api/state') return send(res, 200, state);
 
   if (m === 'POST' && url === '/api/register') {
-    const b = await readBody(req); const n = cleanName(b.name);
-    if (!/^[a-z0-9]{8,40}$/i.test(b.cid || '') || !n || !TIDS.includes(b.t)) return send(res, 400, { error: 'bad' });
+    const b = await readBody(req);
+    const rec = validate(b.t, b);
+    if (!/^[a-z0-9]{8,40}$/i.test(b.cid || '') || !rec) return send(res, 400, { error: 'bad' });
     const id = 'c_' + b.cid;
     if (state.regs[id]) return send(res, 409, { error: 'already' });
-    state.regs[id] = { n, t: b.t, ts: Date.now() }; save(); return send(res, 200, { ok: true });
+    if (taken(rec, id)) return send(res, 409, { error: 'dup' });
+    rec.ts = Date.now(); state.regs[id] = rec; save(); return send(res, 200, { ok: true });
   }
 
   if (m === 'POST' && url === '/api/admin/login') {
@@ -70,15 +90,20 @@ http.createServer(async (req, res) => {
     const b = (m === 'POST' || m === 'PATCH' || m === 'PUT') ? await readBody(req) : {};
 
     if (kind === 'reg' && m === 'POST') {
-      const n = cleanName(b.name);
-      if (!n || !TIDS.includes(b.t)) return send(res, 400, { error: 'bad' });
-      state.regs['m_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)] = { n, t: b.t, ts: Date.now() };
+      const rec = validate(b.t, b);
+      if (!rec) return send(res, 400, { error: 'bad' });
+      if (taken(rec, null)) return send(res, 409, { error: 'dup' });
+      rec.ts = Date.now();
+      state.regs['m_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)] = rec;
       save(); return send(res, 200, { ok: true });
     }
     if (kind === 'reg' && m === 'PATCH') {
-      const r = state.regs[id], n = cleanName(b.name);
-      if (!r || !n) return send(res, 400, { error: 'bad' });
-      r.n = n; save(); return send(res, 200, { ok: true });
+      const r = state.regs[id];
+      if (!r) return send(res, 400, { error: 'bad' });
+      const rec = validate(r.t, { name: b.name, team: b.name, p1: b.p1, p2: b.p2 });
+      if (!rec) return send(res, 400, { error: 'bad' });
+      if (taken(rec, id)) return send(res, 409, { error: 'dup' });
+      rec.ts = r.ts; state.regs[id] = rec; save(); return send(res, 200, { ok: true });
     }
     if (kind === 'reg' && m === 'DELETE') { delete state.regs[id]; save(); return send(res, 200, { ok: true }); }
     if (kind === 'draw' && m === 'PUT') {

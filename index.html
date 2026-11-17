@@ -57,6 +57,8 @@ input,select{background:var(--bg);border:1px solid var(--line);border-radius:10p
 .note{color:var(--mute);font-size:14px}
 .msg{padding:10px 12px;border-radius:10px;background:var(--soft);margin:8px 0}
 .links input{direction:ltr;text-align:left;font-size:13px}
+.fields label{display:block;margin:10px 0 4px;font-weight:700;font-size:14px}
+.fields{margin-bottom:14px}
 .tag{display:inline-block;background:var(--soft);border-radius:8px;padding:2px 8px;font-size:13px;color:var(--acc)}
 </style>
 </head>
@@ -82,9 +84,11 @@ if(!cid){cid=Array.from(crypto.getRandomValues(new Uint8Array(12))).map(b=>b.toS
 const me='c_'+cid;
 let token=sessionStorage.getItem('tk')||'';
 let regs={},draws={},ready=false,loadErr=false,last='';
-let tab='belot',form={name:'',t:''},pending=false;
+let tab='belot',form={name:'',t:'',team:'',p1:'',p2:''},pending=false;
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const regList=t=>Object.entries(regs).filter(([,r])=>r.t===t).map(([i,r])=>({i,n:r.n,ts:r.ts||0})).sort((a,b)=>a.ts-b.ts);
+const regList=t=>Object.entries(regs).filter(([,r])=>r.t===t).map(([i,r])=>({i,n:r.n,ts:r.ts||0,p1:r.p1,p2:r.p2})).sort((a,b)=>a.ts-b.ts);
+const triple=s=>String(s||'').trim().split(/\s+/).filter(Boolean).length>=3;
+const teamOf=r=>r&&r.t==='tennis'&&r.p1?' <small class="note">('+esc(r.p1)+' و '+esc(r.p2)+')</small>':'';
 
 async function api(method,url,body){
   const r=await fetch(url,{method,headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:body?JSON.stringify(body):undefined});
@@ -143,7 +147,7 @@ function bracketHTML(t,edit){
           h+='<select data-slot="'+t+'|'+r+'|'+i+'|'+side+'"><option value="">— فارغ (BYE) —</option>'+
           people.map(x=>'<option value="'+esc(x.i)+'"'+(p&&p.i===x.i?' selected':'')+'>'+esc(x.n)+'</option>').join('')+
           (p&&!people.find(x=>x.i===p.i)?'<option value="'+esc(p.i)+'" selected>'+esc(p.n)+'</option>':'')+'</select>';
-        }else h+='<span>'+(p?esc(p.n):(r===0?'BYE':'—'))+'</span>';
+        }else h+='<span>'+(p?esc(p.n)+(t==='tennis'?teamOf(regs[p.i]):''):(r===0?'BYE':'—'))+'</span>';
         if(edit&&p&&(m.a&&m.b)){h+='<button data-win="'+t+'|'+r+'|'+i+'|'+esc(p.i)+'">'+(m.w===p.i?'✓ فائز':'فاز')+'</button>'}
         h+='</div>';
       });
@@ -159,17 +163,22 @@ function bracketHTML(t,edit){
 function tabsHTML(){return '<div class="tabs">'+T.map(x=>'<button data-tab="'+x.id+'" class="'+(tab===x.id?'on':'')+'">'+x.e+' '+esc(x.n)+'</button>').join('')+'</div>'}
 function playersHTML(t){
   const l=regList(t);
-  return '<p class="note">المشتركون ('+l.length+'): '+(l.length?l.map(x=>'<span class="tag">'+esc(x.n)+'</span>').join(' '):'لا يوجد بعد')+'</p>';
+  return '<p class="note">'+(t==='tennis'?'الفرق':'المشتركون')+' ('+l.length+'): '+(l.length?l.map(x=>'<span class="tag">'+esc(x.n)+(t==='tennis'?' ('+esc(x.p1)+' و '+esc(x.p2)+')':'')+'</span>').join(' '):'لا يوجد بعد')+'</p>';
+}
+function formFields(){
+  if(!form.t)return '';
+  if(form.t==='tennis')return '<div class="fields"><label>اسم الفريق</label><input id="tm" placeholder="اسم الفريق" value="'+esc(form.team)+'" maxlength="40"><label>اللاعب الأول (اسم ثلاثي)</label><input id="p1" placeholder="الاسم الثلاثي" value="'+esc(form.p1)+'" maxlength="40"><label>اللاعب الثاني (اسم ثلاثي)</label><input id="p2" placeholder="الاسم الثلاثي" value="'+esc(form.p2)+'" maxlength="40"></div>';
+  return '<div class="fields"><label>الاسم الثلاثي</label><input id="nm" placeholder="مثال: محمد أحمد صائغ" value="'+esc(form.name)+'" maxlength="40"></div>';
 }
 function joinView(){
   const mine=regs[me];
   let h='<div class="card"><h2>التسجيل في البطولات</h2>';
   if(mine){
-    h+='<div class="msg">✅ تم تسجيلك باسم <b>'+esc(mine.n)+'</b> في <b>'+esc(tn(mine.t))+'</b>.<br><span class="note">لكل مشترك بطولة واحدة فقط. لأي تعديل تواصل مع المنظّم.</span></div>';
+    h+='<div class="msg">✅ '+(mine.t==='tennis'?'تم تسجيل الفريق <b>'+esc(mine.n)+'</b>'+teamOf(mine):'تم تسجيلك باسم <b>'+esc(mine.n)+'</b>')+' في <b>'+esc(tn(mine.t))+'</b>.<br><span class="note">لكل مشترك بطولة واحدة فقط. لأي تعديل تواصل مع المنظّم.</span></div>';
   }else{
-    h+='<p class="note">اكتب اسمك واختر بطولة واحدة فقط.</p><input id="nm" placeholder="الاسم" value="'+esc(form.name)+'" maxlength="40"><div class="opts">'+
-    T.map(x=>'<div class="opt '+(form.t===x.id?'sel':'')+'" data-pick="'+x.id+'"><span class="e">'+x.e+'</span><div><b>'+esc(x.n)+'</b><small>'+regList(x.id).length+' مشترك</small></div></div>').join('')+
-    '</div><button class="p" id="go" style="width:100%">تسجيل</button>';
+    h+='<p class="note">اختر بطولة واحدة فقط. الاسم يجب أن يكون ثلاثيًا (الاسم الأول + اسم الأب + اسم العائلة).</p><div class="opts">'+
+    T.map(x=>'<div class="opt '+(form.t===x.id?'sel':'')+'" data-pick="'+x.id+'"><span class="e">'+x.e+'</span><div><b>'+esc(x.n)+'</b><small>'+regList(x.id).length+(x.id==='tennis'?' فريق (كل فريق لاعبان)':' مشترك')+'</small></div></div>').join('')+'</div>'+formFields()+
+    (form.t?'<button class="p" id="go" style="width:100%">تسجيل</button>':'');
   }
   return h+'</div><div class="card"><h2>النتائج والقرعة</h2>'+tabsHTML()+playersHTML(tab)+bracketHTML(tab,false)+'</div>';
 }
@@ -183,9 +192,9 @@ function adminView(){
   const l=regList(tab),R=getR(tab);
   h+='<div class="card"><h2>إدارة البطولات</h2>'+tabsHTML()+
   '<h3>المشتركون ('+l.length+')</h3><ul class="plist">'+
-  l.map((x,k)=>'<li><span class="n">'+(k+1)+'</span><span>'+esc(x.n)+'</span><button data-ren="'+esc(x.i)+'">تعديل</button><button class="d" data-del="'+esc(x.i)+'">حذف</button></li>').join('')+
+  l.map((x,k)=>'<li><span class="n">'+(k+1)+'</span><span>'+esc(x.n)+(tab==='tennis'?teamOf({t:'tennis',p1:x.p1,p2:x.p2}):'')+'</span><button data-ren="'+esc(x.i)+'">تعديل</button><button class="d" data-del="'+esc(x.i)+'">حذف</button></li>').join('')+
   (l.length?'':'<li class="note">لا يوجد مشتركون</li>')+'</ul>'+
-  '<div class="row"><input id="addn" placeholder="إضافة مشترك يدويًا" maxlength="40"><button id="add">إضافة</button></div>'+
+  '<div class="row"><input id="addn" placeholder="'+(tab==='tennis'?'إضافة فريق (اسم الفريق)':'إضافة مشترك (اسم ثلاثي)')+'" maxlength="40"><button id="add">إضافة</button></div>'+
   '<div class="row" style="margin-top:14px"><button class="p" id="draw"'+(l.length<2?' disabled':'')+'>🎲 '+(R?'إعادة القرعة':'إجراء القرعة')+'</button>'+(R?'<button class="d" id="undraw">حذف القرعة</button>':'')+'</div>'+
   (l.length<2?'<p class="note">يلزم مشتركان على الأقل.</p>':'')+
   '<h3 style="margin-top:16px">القرعة</h3><p class="note">يمكنك تغيير أي اسم في الدور الأول من القائمة، وتحديد الفائز بزر «فاز».</p>'+bracketHTML(tab,true)+'</div>';
@@ -202,7 +211,7 @@ function render(force){
 document.addEventListener('focusout',()=>{if(pending)setTimeout(()=>render(),50)});
 
 /* ---------- events ---------- */
-document.addEventListener('input',e=>{if(e.target.id==='nm')form.name=e.target.value});
+document.addEventListener('input',e=>{const k={nm:'name',tm:'team',p1:'p1',p2:'p2'}[e.target.id];if(k)form[k]=e.target.value});
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='pw')document.getElementById('login').click()});
 document.addEventListener('change',async e=>{
   const s=e.target.dataset&&e.target.dataset.slot;if(!s)return;
@@ -224,21 +233,37 @@ document.addEventListener('click',async e=>{
       catch(x){alert('كلمة المرور غير صحيحة')}return;
     }
     if(b.id==='go'){
-      const name=(document.getElementById('nm').value||'').trim();form.name=name;
-      if(!name){alert('اكتب اسمك');return}
       if(!form.t){alert('اختر بطولة');return}
+      const body={cid,t:form.t};
+      if(form.t==='tennis'){
+        const team=form.team.trim(),p1=form.p1.trim(),p2=form.p2.trim();
+        if(!team){alert('اكتب اسم الفريق');return}
+        if(!triple(p1)||!triple(p2)){alert('اسم كل لاعب لازم يكون ثلاثي');return}
+        if(p1.replace(/\s+/g,' ')===p2.replace(/\s+/g,' ')){alert('اللاعبان لازم يكونان شخصين مختلفين');return}
+        Object.assign(body,{team,p1,p2});
+      }else{
+        const name=form.name.trim();
+        if(!triple(name)){alert('اكتب اسمك الثلاثي');return}
+        body.name=name;
+      }
       b.disabled=true;
-      try{await api('POST','/api/register',{cid,name,t:form.t})}
-      catch(x){alert(x.status===409?'أنت مسجّل مسبقًا':'تعذّر التسجيل');b.disabled=false}
+      try{await api('POST','/api/register',body)}
+      catch(x){alert(x.message==='already'?'أنت مسجّل مسبقًا':x.message==='dup'?'أحد هذه الأسماء مسجّل مسبقًا':'تعذّر التسجيل، تأكد من البيانات');b.disabled=false}
       await load();render(true);return;
     }
     if(b.id==='add'){
       const name=document.getElementById('addn').value.trim();if(!name)return;
-      await api('POST','/api/admin/reg',{name,t:tab});
+      const body={name,team:name,t:tab};
+      if(tab==='tennis'){const p1=(prompt('اللاعب الأول (اسم ثلاثي)')||'').trim(),p2=(prompt('اللاعب الثاني (اسم ثلاثي)')||'').trim();body.p1=p1;body.p2=p2;if(!triple(p1)||!triple(p2)){alert('اسم كل لاعب لازم يكون ثلاثي');return}}
+      else if(!triple(name)){alert('الاسم لازم يكون ثلاثي');return}
+      try{await api('POST','/api/admin/reg',body)}catch(x){alert(x.message==='dup'?'أحد الأسماء مسجّل مسبقًا':'بيانات غير صحيحة');return}
     }else if(b.dataset.ren){
-      const id=b.dataset.ren,nn=prompt('الاسم الجديد',regs[id].n);if(!nn||!nn.trim())return;
-      const t=regs[id].t;await api('PATCH','/api/admin/reg/'+id,{name:nn.trim()});
-      const R=getR(t);if(R){R.forEach(rd=>rd.forEach(m=>['a','b'].forEach(s=>{if(m[s]&&m[s].i===id)m[s].n=nn.trim()})));await saveR(t,R)}
+      const id=b.dataset.ren,r=regs[id],t=r.t;const nn0=prompt(t==='tennis'?'اسم الفريق':'الاسم الثلاثي',r.n);if(!nn0||!nn0.trim())return;const nn=nn0.trim();
+      const body={name:nn};
+      if(t==='tennis'){const a1=prompt('اللاعب الأول (اسم ثلاثي)',r.p1||'');if(!a1)return;const a2=prompt('اللاعب الثاني (اسم ثلاثي)',r.p2||'');if(!a2)return;body.p1=a1.trim();body.p2=a2.trim();if(!triple(body.p1)||!triple(body.p2)){alert('اسم كل لاعب لازم يكون ثلاثي');return}}
+      else if(!triple(nn)){alert('الاسم لازم يكون ثلاثي');return}
+      try{await api('PATCH','/api/admin/reg/'+id,body)}catch(x){alert(x.message==='dup'?'أحد الأسماء مسجّل مسبقًا':'بيانات غير صحيحة');return}
+      const R=getR(t);if(R){R.forEach(rd=>rd.forEach(m=>['a','b'].forEach(s=>{if(m[s]&&m[s].i===id)m[s].n=nn})));await saveR(t,R)}
     }else if(b.dataset.del){
       const id=b.dataset.del;if(!confirm('حذف «'+regs[id].n+'»؟'))return;
       const t=regs[id].t;await api('DELETE','/api/admin/reg/'+id);
