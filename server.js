@@ -6,7 +6,7 @@ const crypto = require('crypto');
 
 const PORT = process.env.PORT || 3000;
 const clean1 = v => String(v || '').trim().replace(/^["']|["']$/g, '');
-const PASS_LIST = ['ADMIN_PASSWORD', 'ADMIN_PASS', 'PASSWORD', 'ADMIN', 'SECRET'].map(k => clean1(process.env[k])).filter(Boolean);
+const PASS_LIST = ['ADMIN_KEY', 'ADMIN_PASSWORD', 'ADMIN_PASS', 'ADMIN_SECRET', 'ADMIN_TOKEN', 'KEY', 'PASSWORD', 'ADMIN', 'SECRET'].map(k => clean1(process.env[k])).filter(Boolean);
 if (!PASS_LIST.length) PASS_LIST.push('admin123');
 const ADMIN_PASSWORD = PASS_LIST[0];
 const SECRET = process.env.SECRET || ('s_' + ADMIN_PASSWORD);
