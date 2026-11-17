@@ -183,7 +183,7 @@ function joinView(){
   return h+'</div><div class="card"><h2>النتائج والقرعة</h2>'+tabsHTML()+playersHTML(tab)+bracketHTML(tab,false)+'</div>';
 }
 function loginView(){
-  return '<div class="card"><h2>دخول الأدمن</h2><div class="row"><input id="pw" type="password" placeholder="كلمة المرور"><button class="p" id="login">دخول</button></div></div>';
+  return '<div class="card"><h2>دخول الأدمن</h2><div class="row"><input id="pw" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr" placeholder="كلمة المرور"><button class="p" id="login">دخول</button></div></div>';
 }
 function adminView(){
   const o=location.origin;
@@ -197,7 +197,8 @@ function adminView(){
   '<div class="row"><input id="addn" placeholder="'+(tab==='tennis'?'إضافة فريق (اسم الفريق)':'إضافة مشترك (اسم ثلاثي)')+'" maxlength="40"><button id="add">إضافة</button></div>'+
   '<div class="row" style="margin-top:14px"><button class="p" id="draw"'+(l.length<2?' disabled':'')+'>🎲 '+(R?'إعادة القرعة':'إجراء القرعة')+'</button>'+(R?'<button class="d" id="undraw">حذف القرعة</button>':'')+'</div>'+
   (l.length<2?'<p class="note">يلزم مشتركان على الأقل.</p>':'')+
-  '<h3 style="margin-top:16px">القرعة</h3><p class="note">يمكنك تغيير أي اسم في الدور الأول من القائمة، وتحديد الفائز بزر «فاز».</p>'+bracketHTML(tab,true)+'</div>';
+  '<h3 style="margin-top:16px">القرعة</h3><p class="note">يمكنك تغيير أي اسم في الدور الأول من القائمة، وتحديد الفائز بزر «فاز».</p>'+bracketHTML(tab,true)+'</div>'+
+  '<div class="card"><h2>منطقة الخطر</h2><p class="note">يمسح جميع المشتركين وجميع القرعات في كل البطولات نهائيًا.</p><button class="d" id="resetall">🗑️ تصفير كل البيانات</button></div>';
   return h;
 }
 function render(force){
@@ -222,7 +223,7 @@ document.addEventListener('change',async e=>{
   await saveR(t,R);
 });
 document.addEventListener('click',async e=>{
-  const b=e.target.closest('[data-tab],[data-pick],[data-win],[data-ren],[data-del],[data-copy],#go,#add,#draw,#undraw,#login');
+  const b=e.target.closest('[data-tab],[data-pick],[data-win],[data-ren],[data-del],[data-copy],#go,#add,#draw,#undraw,#login,#resetall');
   if(!b)return;
   if(b.dataset.tab){tab=b.dataset.tab;render(true);return}
   if(b.dataset.pick){const n=document.getElementById('nm');if(n)form.name=n.value;form.t=b.dataset.pick;render(true);return}
@@ -230,7 +231,7 @@ document.addEventListener('click',async e=>{
   try{
     if(b.id==='login'){
       try{const j=await api('POST','/api/admin/login',{password:document.getElementById('pw').value});token=j.token;sessionStorage.setItem('tk',token);render(true)}
-      catch(x){alert('كلمة المرور غير صحيحة')}return;
+      catch(x){alert(x.status===401?'كلمة المرور غير صحيحة':'تعذّر الاتصال بالسيرفر ('+(x.status||x.message)+') — تأكد أنك رفعت server.js الجديد')}return;
     }
     if(b.id==='go'){
       if(!form.t){alert('اختر بطولة');return}
@@ -271,6 +272,10 @@ document.addEventListener('click',async e=>{
     }else if(b.id==='draw'){
       if(getR(tab)&&!confirm('ستُستبدل القرعة الحالية بقرعة جديدة. متابعة؟'))return;
       await saveR(tab,makeRounds(regList(tab)));
+    }else if(b.id==='resetall'){
+      if(!confirm('سيتم حذف كل المشتركين وكل القرعات في جميع البطولات. هل أنت متأكد؟'))return;
+      if(prompt('للتأكيد اكتب كلمة: تصفير')!=='تصفير'){alert('تم الإلغاء');return}
+      await api('POST','/api/admin/reset',{});
     }else if(b.id==='undraw'){
       if(confirm('حذف القرعة؟'))await api('DELETE','/api/admin/draw/'+tab);
     }else if(b.dataset.win){

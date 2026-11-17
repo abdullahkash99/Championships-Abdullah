@@ -84,7 +84,7 @@ http.createServer(async (req, res) => {
   if (m === 'POST' && url === '/api/admin/login') {
     const b = await readBody(req);
     const pw = clean1(b.password);
-    if (PASS_LIST.some(p => p === pw)) return send(res, 200, { token: makeToken() });
+    if (PASS_LIST.some(p => p.toLowerCase() === pw.toLowerCase())) return send(res, 200, { token: makeToken() });
     return setTimeout(() => send(res, 401, { error: 'wrong' }), 600);
   }
 
