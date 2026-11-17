@@ -5,7 +5,7 @@ const path = require('path');
 const crypto = require('crypto');
 
 const PORT = process.env.PORT || 3000;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || 'admin123').trim().replace(/^["']|["']$/g, '');
 const SECRET = process.env.SECRET || ('s_' + ADMIN_PASSWORD);
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const FILE = path.join(DATA_DIR, 'state.json');
@@ -78,7 +78,7 @@ http.createServer(async (req, res) => {
 
   if (m === 'POST' && url === '/api/admin/login') {
     const b = await readBody(req);
-    const x = Buffer.from(String(b.password || '')), y = Buffer.from(ADMIN_PASSWORD);
+    const x = Buffer.from(String(b.password || '').trim()), y = Buffer.from(ADMIN_PASSWORD);
     if (x.length === y.length && crypto.timingSafeEqual(x, y)) return send(res, 200, { token: makeToken() });
     return setTimeout(() => send(res, 401, { error: 'wrong' }), 600);
   }
@@ -105,6 +105,7 @@ http.createServer(async (req, res) => {
       if (taken(rec, id)) return send(res, 409, { error: 'dup' });
       rec.ts = r.ts; state.regs[id] = rec; save(); return send(res, 200, { ok: true });
     }
+    if (kind === 'reset' && m === 'POST') { state = { regs: {}, draws: {} }; save(); return send(res, 200, { ok: true }); }
     if (kind === 'reg' && m === 'DELETE') { delete state.regs[id]; save(); return send(res, 200, { ok: true }); }
     if (kind === 'draw' && m === 'PUT') {
       if (!TIDS.includes(id) || typeof b.r !== 'string') return send(res, 400, { error: 'bad' });
