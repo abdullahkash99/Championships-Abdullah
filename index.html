@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>بطولات حفل تقاعد الأستاذ محمد صائغ</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#faf6ee;--card:#fff;--ink:#2a2118;--mute:#7a6e60;--line:#e6dccb;--acc:#9a6b1f;--acc2:#c99a3b;--ok:#2f7d4f;--bad:#b3392f;--soft:#f4ecdb}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17130d;--card:#221c13;--ink:#f3eadb;--mute:#a89a85;--line:#3a3022;--acc:#e0b25a;--acc2:#c99a3b;--ok:#5cc08a;--bad:#ef7d72;--soft:#2c2417}}
+:root[data-theme="dark"]{--bg:#17130d;--card:#221c13;--ink:#f3eadb;--mute:#a89a85;--line:#3a3022;--acc:#e0b25a;--acc2:#c99a3b;--ok:#5cc08a;--bad:#ef7d72;--soft:#2c2417}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Tajawal',Tahoma,Arial,sans-serif;line-height:1.6}
+.wrap{max-width:920px;margin:0 auto;padding:16px}
+header{text-align:center;padding:22px 8px 10px}
+header .sub{color:var(--acc);font-weight:700;letter-spacing:.5px}
+header h1{margin:4px 0;font-size:clamp(22px,5vw,34px);font-weight:800}
+header p{margin:0;color:var(--mute)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin:14px 0}
+h2{margin:0 0 10px;font-size:20px}
+h3{margin:0 0 8px;font-size:16px}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer;border:1px solid var(--line);background:var(--soft);padding:8px 14px;border-radius:10px}
+button.p{background:var(--acc);color:#fff;border-color:var(--acc);font-weight:700}
+button.d{color:var(--bad)}
+button:disabled{opacity:.5;cursor:default}
+input,select{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 12px;width:100%}
+.opts{display:grid;gap:10px;margin:12px 0}
+.opt{display:flex;align-items:center;gap:12px;border:2px solid var(--line);border-radius:14px;padding:14px;cursor:pointer;background:var(--bg)}
+.opt.sel{border-color:var(--acc);background:var(--soft)}
+.opt .e{font-size:28px}
+.opt b{font-size:17px}
+.opt small{display:block;color:var(--mute)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.tabs button.on{background:var(--acc);color:#fff;border-color:var(--acc)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row>input{flex:1;min-width:140px}
+.plist{list-style:none;margin:8px 0;padding:0}
+.plist li{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px dashed var(--line)}
+.plist li span{flex:1}
+.plist .n{color:var(--mute);width:24px}
+.bracket{display:flex;gap:18px;overflow-x:auto;padding:8px 0 12px}
+.round{min-width:200px;display:flex;flex-direction:column;justify-content:space-around;gap:12px}
+.round h4{margin:0;text-align:center;color:var(--acc);font-size:14px}
+.m{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--bg)}
+.s{display:flex;align-items:center;gap:6px;padding:8px 10px;border-bottom:1px solid var(--line);min-height:40px}
+.s:last-child{border-bottom:0}
+.s.w{background:var(--soft);font-weight:800;color:var(--ok)}
+.s.l{color:var(--mute);text-decoration:line-through}
+.s.t{color:var(--mute)}
+.s span{flex:1}
+.s select{padding:4px 6px;font-size:14px}
+.s button{padding:3px 8px;font-size:13px}
+.champ{text-align:center;font-size:20px;font-weight:800;color:var(--ok);margin-top:6px}
+.note{color:var(--mute);font-size:14px}
+.msg{padding:10px 12px;border-radius:10px;background:var(--soft);margin:8px 0}
+.links input{direction:ltr;text-align:left;font-size:13px}
+.tag{display:inline-block;background:var(--soft);border-radius:8px;padding:2px 8px;font-size:13px;color:var(--acc)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+<div class="sub">🏆 حفل تقاعد</div>
+<h1>الأستاذ محمد صائغ</h1>
+<p>بطولات الحفل</p>
+</header>
+<div id="app"><div class="card note">جارٍ التحميل…</div></div>
+</div>
+<script>
+const T=[
+{id:'belot',n:'بطولة البلوت العالمية',e:'🃏'},
+{id:'domino',n:'بطولة الضومنة التاريخية',e:'🎲'},
+{id:'tennis',n:'بطولة التنس للمحترفين',e:'🎾'}];
+const tn=id=>(T.find(t=>t.id===id)||{}).n||'';
+const $app=document.getElementById('app');
+const ADMIN=location.pathname.replace(/\/+$/,'')==='/admin';
+let cid=localStorage.getItem('cid');
+if(!cid){cid=Array.from(crypto.getRandomValues(new Uint8Array(12))).map(b=>b.toString(16).padStart(2,'0')).join('');localStorage.setItem('cid',cid)}
+const me='c_'+cid;
+let token=sessionStorage.getItem('tk')||'';
+let regs={},draws={},ready=false,loadErr=false,last='';
+let tab='belot',form={name:'',t:''},pending=false;
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const regList=t=>Object.entries(regs).filter(([,r])=>r.t===t).map(([i,r])=>({i,n:r.n,ts:r.ts||0})).sort((a,b)=>a.ts-b.ts);
+
+async function api(method,url,body){
+  const r=await fetch(url,{method,headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:body?JSON.stringify(body):undefined});
+  let j={};try{j=await r.json()}catch(e){}
+  if(r.status===401&&ADMIN&&url!=='/api/admin/login'){token='';sessionStorage.removeItem('tk');render(true)}
+  if(!r.ok)throw Object.assign(new Error(j.error||r.status),{status:r.status});
+  return j;
+}
+async function load(){
+  try{
+    const r=await fetch('/api/state');const txt=await r.text();
+    if(txt!==last){last=txt;const s=JSON.parse(txt);regs=s.regs||{};draws=s.draws||{};ready=true;loadErr=false;render()}
+    else if(!ready){ready=true;render()}
+  }catch(e){if(!ready){loadErr=true;render(true)}}
+}
+
+/* ---------- bracket logic ---------- */
+function makeRounds(list){
+  const n=list.length;let size=2;while(size<n)size*=2;
+  const sh=list.slice();for(let i=sh.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[sh[i],sh[j]]=[sh[j],sh[i]]}
+  const slots=Array(size).fill(null);let k=0;
+  for(let i=0;i<size&&k<n;i+=2)slots[i]=sh[k++];
+  for(let i=1;i<size&&k<n;i+=2)slots[i]=sh[k++];
+  const rounds=[];
+  rounds.push(Array.from({length:size/2},(_,i)=>({a:slots[2*i]?{i:slots[2*i].i,n:slots[2*i].n}:null,b:slots[2*i+1]?{i:slots[2*i+1].i,n:slots[2*i+1].n}:null,w:null})));
+  for(let s=size/4;s>=1;s/=2)rounds.push(Array.from({length:s},()=>({a:null,b:null,w:null})));
+  return normalize(rounds);
+}
+function normalize(R){
+  R.forEach((rd,r)=>rd.forEach((m,i)=>{
+    if(r>0){m.a=winSlot(R[r-1][2*i]);m.b=winSlot(R[r-1][2*i+1])}
+    else{const x=!!m.a,y=!!m.b;if(x&&!y)m.w=m.a.i;else if(y&&!x)m.w=m.b.i}
+    if(m.w&&!((m.a&&m.a.i===m.w)||(m.b&&m.b.i===m.w)))m.w=null;
+  }));
+  return R;
+}
+function winSlot(m){if(!m||!m.w)return null;return (m.a&&m.a.i===m.w)?m.a:(m.b&&m.b.i===m.w)?m.b:null}
+const getR=t=>{try{return draws[t]?JSON.parse(draws[t].r):null}catch(e){return null}};
+const roundName=(r,total)=>{const left=total-r;return left===1?'النهائي':left===2?'نصف النهائي':left===3?'ربع النهائي':'الدور '+(r+1)};
+async function saveR(t,R){try{await api('PUT','/api/admin/draw/'+t,{r:JSON.stringify(normalize(R))});await load()}catch(e){alert('تعذّر الحفظ')}}
+
+/* ---------- views ---------- */
+function bracketHTML(t,edit){
+  const R=getR(t);
+  if(!R)return '<div class="msg">لم تُجرَ القرعة بعد.</div>';
+  const people=regList(t);
+  let h='<div class="bracket">';
+  R.forEach((rd,r)=>{
+    h+='<div class="round"><h4>'+roundName(r,R.length)+'</h4>';
+    rd.forEach((m,i)=>{
+      h+='<div class="m">';
+      ['a','b'].forEach(side=>{
+        const p=m[side];const cls=m.w&&p?(m.w===p.i?'w':'l'):(p?'':'t');
+        h+='<div class="s '+cls+'">';
+        if(edit&&r===0){
+          h+='<select data-slot="'+t+'|'+r+'|'+i+'|'+side+'"><option value="">— فارغ (BYE) —</option>'+
+          people.map(x=>'<option value="'+esc(x.i)+'"'+(p&&p.i===x.i?' selected':'')+'>'+esc(x.n)+'</option>').join('')+
+          (p&&!people.find(x=>x.i===p.i)?'<option value="'+esc(p.i)+'" selected>'+esc(p.n)+'</option>':'')+'</select>';
+        }else h+='<span>'+(p?esc(p.n):(r===0?'BYE':'—'))+'</span>';
+        if(edit&&p&&(m.a&&m.b)){h+='<button data-win="'+t+'|'+r+'|'+i+'|'+esc(p.i)+'">'+(m.w===p.i?'✓ فائز':'فاز')+'</button>'}
+        h+='</div>';
+      });
+      h+='</div>';
+    });
+    h+='</div>';
+  });
+  h+='</div>';
+  const ch=winSlot(R[R.length-1][0]);
+  if(ch)h+='<div class="champ">🏆 بطل '+esc(tn(t))+': '+esc(ch.n)+'</div>';
+  return h;
+}
+function tabsHTML(){return '<div class="tabs">'+T.map(x=>'<button data-tab="'+x.id+'" class="'+(tab===x.id?'on':'')+'">'+x.e+' '+esc(x.n)+'</button>').join('')+'</div>'}
+function playersHTML(t){
+  const l=regList(t);
+  return '<p class="note">المشتركون ('+l.length+'): '+(l.length?l.map(x=>'<span class="tag">'+esc(x.n)+'</span>').join(' '):'لا يوجد بعد')+'</p>';
+}
+function joinView(){
+  const mine=regs[me];
+  let h='<div class="card"><h2>التسجيل في البطولات</h2>';
+  if(mine){
+    h+='<div class="msg">✅ تم تسجيلك باسم <b>'+esc(mine.n)+'</b> في <b>'+esc(tn(mine.t))+'</b>.<br><span class="note">لكل مشترك بطولة واحدة فقط. لأي تعديل تواصل مع المنظّم.</span></div>';
+  }else{
+    h+='<p class="note">اكتب اسمك واختر بطولة واحدة فقط.</p><input id="nm" placeholder="الاسم" value="'+esc(form.name)+'" maxlength="40"><div class="opts">'+
+    T.map(x=>'<div class="opt '+(form.t===x.id?'sel':'')+'" data-pick="'+x.id+'"><span class="e">'+x.e+'</span><div><b>'+esc(x.n)+'</b><small>'+regList(x.id).length+' مشترك</small></div></div>').join('')+
+    '</div><button class="p" id="go" style="width:100%">تسجيل</button>';
+  }
+  return h+'</div><div class="card"><h2>النتائج والقرعة</h2>'+tabsHTML()+playersHTML(tab)+bracketHTML(tab,false)+'</div>';
+}
+function loginView(){
+  return '<div class="card"><h2>دخول الأدمن</h2><div class="row"><input id="pw" type="password" placeholder="كلمة المرور"><button class="p" id="login">دخول</button></div></div>';
+}
+function adminView(){
+  const o=location.origin;
+  let h='<div class="card links"><h2>الروابط</h2><h3>الرابط الأول — الأدمن</h3><div class="row"><input readonly value="'+esc(o)+'/admin"><button data-copy="'+esc(o)+'/admin">نسخ</button></div>'+
+  '<h3 style="margin-top:10px">الرابط الثاني — المشتركون</h3><div class="row"><input readonly value="'+esc(o)+'/"><button data-copy="'+esc(o)+'/">نسخ</button></div></div>';
+  const l=regList(tab),R=getR(tab);
+  h+='<div class="card"><h2>إدارة البطولات</h2>'+tabsHTML()+
+  '<h3>المشتركون ('+l.length+')</h3><ul class="plist">'+
+  l.map((x,k)=>'<li><span class="n">'+(k+1)+'</span><span>'+esc(x.n)+'</span><button data-ren="'+esc(x.i)+'">تعديل</button><button class="d" data-del="'+esc(x.i)+'">حذف</button></li>').join('')+
+  (l.length?'':'<li class="note">لا يوجد مشتركون</li>')+'</ul>'+
+  '<div class="row"><input id="addn" placeholder="إضافة مشترك يدويًا" maxlength="40"><button id="add">إضافة</button></div>'+
+  '<div class="row" style="margin-top:14px"><button class="p" id="draw"'+(l.length<2?' disabled':'')+'>🎲 '+(R?'إعادة القرعة':'إجراء القرعة')+'</button>'+(R?'<button class="d" id="undraw">حذف القرعة</button>':'')+'</div>'+
+  (l.length<2?'<p class="note">يلزم مشتركان على الأقل.</p>':'')+
+  '<h3 style="margin-top:16px">القرعة</h3><p class="note">يمكنك تغيير أي اسم في الدور الأول من القائمة، وتحديد الفائز بزر «فاز».</p>'+bracketHTML(tab,true)+'</div>';
+  return h;
+}
+function render(force){
+  const a=document.activeElement;
+  if(!force&&a&&['INPUT','SELECT'].includes(a.tagName)){pending=true;return}
+  pending=false;
+  if(loadErr){$app.innerHTML='<div class="card msg">تعذّر الاتصال بالخادم، أعد تحميل الصفحة.</div>';return}
+  if(!ready)return;
+  $app.innerHTML=ADMIN?(token?adminView():loginView()):joinView();
+}
+document.addEventListener('focusout',()=>{if(pending)setTimeout(()=>render(),50)});
+
+/* ---------- events ---------- */
+document.addEventListener('input',e=>{if(e.target.id==='nm')form.name=e.target.value});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='pw')document.getElementById('login').click()});
+document.addEventListener('change',async e=>{
+  const s=e.target.dataset&&e.target.dataset.slot;if(!s)return;
+  const [t,r,i,side]=s.split('|');const R=getR(t);const m=R[+r][+i];
+  const v=e.target.value;const p=v?regList(t).find(x=>x.i===v):null;
+  if(p)R[0].forEach(mm=>['a','b'].forEach(sd=>{if(mm[sd]&&mm[sd].i===p.i&&!(mm===m&&sd===side))mm[sd]=null}));
+  m[side]=p?{i:p.i,n:p.n}:null;m.w=null;
+  await saveR(t,R);
+});
+document.addEventListener('click',async e=>{
+  const b=e.target.closest('[data-tab],[data-pick],[data-win],[data-ren],[data-del],[data-copy],#go,#add,#draw,#undraw,#login');
+  if(!b)return;
+  if(b.dataset.tab){tab=b.dataset.tab;render(true);return}
+  if(b.dataset.pick){const n=document.getElementById('nm');if(n)form.name=n.value;form.t=b.dataset.pick;render(true);return}
+  if(b.dataset.copy){try{await navigator.clipboard.writeText(b.dataset.copy);b.textContent='تم ✓'}catch(x){b.textContent='انسخ يدويًا'}return}
+  try{
+    if(b.id==='login'){
+      try{const j=await api('POST','/api/admin/login',{password:document.getElementById('pw').value});token=j.token;sessionStorage.setItem('tk',token);render(true)}
+      catch(x){alert('كلمة المرور غير صحيحة')}return;
+    }
+    if(b.id==='go'){
+      const name=(document.getElementById('nm').value||'').trim();form.name=name;
+      if(!name){alert('اكتب اسمك');return}
+      if(!form.t){alert('اختر بطولة');return}
+      b.disabled=true;
+      try{await api('POST','/api/register',{cid,name,t:form.t})}
+      catch(x){alert(x.status===409?'أنت مسجّل مسبقًا':'تعذّر التسجيل');b.disabled=false}
+      await load();render(true);return;
+    }
+    if(b.id==='add'){
+      const name=document.getElementById('addn').value.trim();if(!name)return;
+      await api('POST','/api/admin/reg',{name,t:tab});
+    }else if(b.dataset.ren){
+      const id=b.dataset.ren,nn=prompt('الاسم الجديد',regs[id].n);if(!nn||!nn.trim())return;
+      const t=regs[id].t;await api('PATCH','/api/admin/reg/'+id,{name:nn.trim()});
+      const R=getR(t);if(R){R.forEach(rd=>rd.forEach(m=>['a','b'].forEach(s=>{if(m[s]&&m[s].i===id)m[s].n=nn.trim()})));await saveR(t,R)}
+    }else if(b.dataset.del){
+      const id=b.dataset.del;if(!confirm('حذف «'+regs[id].n+'»؟'))return;
+      const t=regs[id].t;await api('DELETE','/api/admin/reg/'+id);
+      const R=getR(t);if(R){R[0].forEach(m=>['a','b'].forEach(s=>{if(m[s]&&m[s].i===id)m[s]=null}));R.forEach(rd=>rd.forEach(m=>{if(m.w===id)m.w=null}));await saveR(t,R)}
+    }else if(b.id==='draw'){
+      if(getR(tab)&&!confirm('ستُستبدل القرعة الحالية بقرعة جديدة. متابعة؟'))return;
+      await saveR(tab,makeRounds(regList(tab)));
+    }else if(b.id==='undraw'){
+      if(confirm('حذف القرعة؟'))await api('DELETE','/api/admin/draw/'+tab);
+    }else if(b.dataset.win){
+      const [t,r,i,pid]=b.dataset.win.split('|');const R=getR(t);const m=R[+r][+i];
+      m.w=(m.w===pid)?null:pid;await saveR(t,R);return;
+    }
+    await load();render(true);
+  }catch(err){alert('حدث خطأ، حاول مرة أخرى')}
+});
+
+load();setInterval(load,4000);
+</script>
+</body>
+</html>
