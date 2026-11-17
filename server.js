@@ -5,7 +5,10 @@ const path = require('path');
 const crypto = require('crypto');
 
 const PORT = process.env.PORT || 3000;
-const ADMIN_PASSWORD = (process.env.ADMIN_PASSWORD || 'admin123').trim().replace(/^["']|["']$/g, '');
+const clean1 = v => String(v || '').trim().replace(/^["']|["']$/g, '');
+const PASS_LIST = ['ADMIN_PASSWORD', 'ADMIN_PASS', 'PASSWORD', 'ADMIN', 'SECRET'].map(k => clean1(process.env[k])).filter(Boolean);
+if (!PASS_LIST.length) PASS_LIST.push('admin123');
+const ADMIN_PASSWORD = PASS_LIST[0];
 const SECRET = process.env.SECRET || ('s_' + ADMIN_PASSWORD);
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const FILE = path.join(DATA_DIR, 'state.json');
@@ -54,6 +57,8 @@ function readBody(req) {
   });
 }
 
+console.log('عدد كلمات السر المقبولة: ' + PASS_LIST.length);
+
 http.createServer(async (req, res) => {
   const url = req.url.split('?')[0].replace(/\/+$/, '') || '/';
   const m = req.method;
@@ -78,8 +83,8 @@ http.createServer(async (req, res) => {
 
   if (m === 'POST' && url === '/api/admin/login') {
     const b = await readBody(req);
-    const x = Buffer.from(String(b.password || '').trim()), y = Buffer.from(ADMIN_PASSWORD);
-    if (x.length === y.length && crypto.timingSafeEqual(x, y)) return send(res, 200, { token: makeToken() });
+    const pw = clean1(b.password);
+    if (PASS_LIST.some(p => p === pw)) return send(res, 200, { token: makeToken() });
     return setTimeout(() => send(res, 401, { error: 'wrong' }), 600);
   }
 
