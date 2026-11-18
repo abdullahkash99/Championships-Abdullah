@@ -57,6 +57,22 @@ function readBody(req) {
   });
 }
 
+function demoGen(t,count,tryAdd,offset){
+ const F=['خالد','فهد','سعد','ناصر','عبدالله','سلطان','تركي','ماجد','بندر','فيصل','وليد','يوسف','إبراهيم','أحمد','عمر','سالم'];
+ const Fa=['محمد','عبدالعزيز','صالح','علي','حسن','إبراهيم','سعود','عبدالرحمن'];
+ const Fm=['الحربي','القحطاني','الغامدي','الزهراني','العتيبي','الشمري','الدوسري','المطيري','السبيعي','الشهري'];
+ const TM=['النسور','الصقور','الفهود','الأسود','العقاب','الذئاب','الشواهين','النمور','الرعد','البرق','الإعصار','الجوارح','الهلال','القمم','الأبطال','الفرسان'];
+ const nm=k=>F[k%F.length]+' '+Fa[(k+Math.floor(k/F.length))%Fa.length]+' '+Fm[(k*3+Math.floor(k/8))%Fm.length];
+ let k=Math.floor(Math.random()*50),added=0,guard=0;
+ while(added<count&&guard++<3000){
+  let rec;
+  if(t==='tennis'){const a=nm(k++),b=nm(k++);if(a===b)continue;const q=(offset||0)+added;rec={n:TM[q%TM.length]+(q>=TM.length?' '+(Math.floor(q/TM.length)+1):''),t,p1:a,p2:b,demo:true}}
+  else rec={n:nm(k++),t,demo:true};
+  if(tryAdd(rec))added++;
+ }
+ return added;
+}
+
 console.log('عدد كلمات السر المقبولة: ' + PASS_LIST.length);
 
 http.createServer(async (req, res) => {
@@ -109,6 +125,18 @@ http.createServer(async (req, res) => {
       if (!rec) return send(res, 400, { error: 'bad' });
       if (taken(rec, id)) return send(res, 409, { error: 'dup' });
       rec.ts = r.ts; state.regs[id] = rec; save(); return send(res, 200, { ok: true });
+    }
+    if (kind === 'demo' && m === 'POST') {
+      const t = b.t, c = Math.min(Math.max(parseInt(b.count) || 0, 1), 32);
+      if (!TIDS.includes(t)) return send(res, 400, { error: 'bad' });
+      demoGen(t, c, rec => { if (taken(rec, null)) return false; rec.ts = Date.now(); state.regs['d_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)] = rec; return true; }, Object.values(state.regs).filter(r => r.t === t).length);
+      save(); return send(res, 200, { ok: true });
+    }
+    if (kind === 'demo-clear' && m === 'POST') {
+      const ts = new Set();
+      for (const [rid, r] of Object.entries(state.regs)) if (r.demo) { ts.add(r.t); delete state.regs[rid]; }
+      ts.forEach(t => delete state.draws[t]);
+      save(); return send(res, 200, { ok: true });
     }
     if (kind === 'reset' && m === 'POST') { state = { regs: {}, draws: {} }; save(); return send(res, 200, { ok: true }); }
     if (kind === 'reg' && m === 'DELETE') { delete state.regs[id]; save(); return send(res, 200, { ok: true }); }
