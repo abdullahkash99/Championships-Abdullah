@@ -13,11 +13,13 @@ const SECRET = process.env.SECRET || ('s_' + ADMIN_PASSWORD);
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const FILE = path.join(DATA_DIR, 'state.json');
 const TIDS = ['belot', 'domino', 'tennis'];
+const DEFAULT_LIMITS = { belot: 16 }; // الحد الافتراضي، ويمكن تغييره من صفحة الأدمن
 const DIDS = TIDS.concat(TIDS.map(x => x + '_teams'));
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 let state = { regs: {}, draws: {} };
 try { state = JSON.parse(fs.readFileSync(FILE, 'utf8')); } catch (e) {}
+if (!state.limits) state.limits = Object.assign({}, DEFAULT_LIMITS);
 function save() { const tmp = FILE + '.tmp'; fs.writeFileSync(tmp, JSON.stringify(state)); fs.renameSync(tmp, FILE); }
 
 const sign = s => crypto.createHmac('sha256', SECRET).update(s).digest('hex');
@@ -32,6 +34,8 @@ function okToken(t) {
 const cleanName = n => String(n || '').trim().slice(0, 40);
 const norm = s => String(s || '').trim().replace(/\s+/g, ' ');
 const triple = s => norm(s).split(' ').filter(Boolean).length >= 3;
+const countOf = t => Object.values(state.regs).filter(r => r.t === t).length;
+const isFull = t => !!state.limits[t] && countOf(t) >= state.limits[t];
 function validate(t, b) {
   if (!TIDS.includes(t)) return null;
   if (t === 'tennis') {
@@ -83,10 +87,17 @@ http.createServer(async (req, res) => {
   if (m === 'GET' && (url === '/' || url === '/admin')) {
     try {
       const html = fs.readFileSync(path.join(__dirname, 'index.html'));
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }); return res.end(html);
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' }); return res.end(html);
     } catch (e) { res.writeHead(500); return res.end('index.html غير موجود بجانب server.js'); }
   }
-  if (m === 'GET' && url === '/api/state') return send(res, 200, state);
+  if (m === 'GET' && url === '/api/state') {
+    // عام: لا يُرجع أسماء المشتركين، فقط تسجيل الزائر نفسه + أعداد + القرعة والفرق
+    const q = new URLSearchParams(req.url.split('?')[1] || '');
+    const own = 'c_' + (q.get('cid') || '');
+    const counts = { belot: 0, domino: 0, tennis: 0 };
+    Object.values(state.regs).forEach(r => { if (counts[r.t] != null) counts[r.t]++; });
+    return send(res, 200, { regs: state.regs[own] ? { [own]: state.regs[own] } : {}, counts, limits: state.limits, draws: state.draws });
+  }
 
   if (m === 'POST' && url === '/api/register') {
     const b = await readBody(req);
@@ -94,6 +105,7 @@ http.createServer(async (req, res) => {
     if (!/^[a-z0-9]{8,40}$/i.test(b.cid || '') || !rec) return send(res, 400, { error: 'bad' });
     const id = 'c_' + b.cid;
     if (state.regs[id]) return send(res, 409, { error: 'already' });
+    if (isFull(rec.t)) return send(res, 409, { error: 'full' });
     if (taken(rec, id)) return send(res, 409, { error: 'dup' });
     rec.ts = Date.now(); state.regs[id] = rec; save(); return send(res, 200, { ok: true });
   }
@@ -109,11 +121,13 @@ http.createServer(async (req, res) => {
     if (!okToken((req.headers.authorization || '').replace('Bearer ', ''))) return send(res, 401, { error: 'unauthorized' });
     const parts = url.split('/'); // ['', 'api', 'admin', kind, id]
     const kind = parts[3], id = decodeURIComponent(parts[4] || '');
+    if (kind === 'state' && m === 'GET') return send(res, 200, state);
     const b = (m === 'POST' || m === 'PATCH' || m === 'PUT') ? await readBody(req) : {};
 
     if (kind === 'reg' && m === 'POST') {
       const rec = validate(b.t, b);
       if (!rec) return send(res, 400, { error: 'bad' });
+      if (isFull(rec.t)) return send(res, 409, { error: 'full' });
       if (taken(rec, null)) return send(res, 409, { error: 'dup' });
       rec.ts = Date.now();
       state.regs['m_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)] = rec;
@@ -127,9 +141,18 @@ http.createServer(async (req, res) => {
       if (taken(rec, id)) return send(res, 409, { error: 'dup' });
       rec.ts = r.ts; state.regs[id] = rec; save(); return send(res, 200, { ok: true });
     }
+    if (kind === 'limit' && m === 'PUT') {
+      const n = parseInt(b.limit);
+      if (!TIDS.includes(b.t) || isNaN(n) || n < 0) return send(res, 400, { error: 'bad' });
+      if (n > 0) state.limits[b.t] = Math.min(n, 500); else delete state.limits[b.t];
+      save(); return send(res, 200, { ok: true, limits: state.limits });
+    }
     if (kind === 'demo' && m === 'POST') {
-      const t = b.t, c = Math.min(Math.max(parseInt(b.count) || 0, 1), 32);
+      const t = b.t; let c = Math.min(Math.max(parseInt(b.count) || 0, 1), 32);
       if (!TIDS.includes(t)) return send(res, 400, { error: 'bad' });
+      const room = state.limits[t] ? state.limits[t] - countOf(t) : 99;
+      if (room <= 0) return send(res, 409, { error: 'full' });
+      c = Math.min(c, room);
       demoGen(t, c, rec => { if (taken(rec, null)) return false; rec.ts = Date.now(); state.regs['d_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)] = rec; return true; }, Object.values(state.regs).filter(r => r.t === t).length);
       save(); return send(res, 200, { ok: true });
     }
@@ -139,7 +162,7 @@ http.createServer(async (req, res) => {
       ts.forEach(t => { delete state.draws[t]; delete state.draws[t + '_teams']; });
       save(); return send(res, 200, { ok: true });
     }
-    if (kind === 'reset' && m === 'POST') { state = { regs: {}, draws: {} }; save(); return send(res, 200, { ok: true }); }
+    if (kind === 'reset' && m === 'POST') { state = { regs: {}, draws: {}, limits: state.limits }; save(); return send(res, 200, { ok: true }); }
     if (kind === 'reg' && m === 'DELETE') { delete state.regs[id]; save(); return send(res, 200, { ok: true }); }
     if (kind === 'draw' && m === 'PUT') {
       if (!DIDS.includes(id) || typeof b.r !== 'string') return send(res, 400, { error: 'bad' });
