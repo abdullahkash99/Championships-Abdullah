@@ -62,11 +62,15 @@ input,select{background:var(--bg);border:1px solid var(--line);border-radius:10p
 .s input.sc{width:58px;flex:none;text-align:center;padding:4px 6px}
 .scv{min-width:24px;text-align:center;color:var(--acc)}
 .save-row{justify-content:flex-end;background:var(--soft)}
+.tbl{width:100%;border-collapse:collapse;font-size:15px;margin:6px 0 12px}
+.tbl th,.tbl td{border:1px solid var(--line);padding:8px 10px;text-align:right}
+.tbl th{background:var(--soft);color:var(--acc)}
+.tbl td.tn{font-weight:800}
 .tag{display:inline-block;background:var(--soft);border-radius:8px;padding:2px 8px;font-size:13px;color:var(--acc)}
 </style>
 </head>
 <body>
-<div class="wrap"><div class="card" style="font-size:14px"><b>🧪 نسخة معاينة</b> — السيرفر وهمي داخل متصفحك والبيانات محفوظة عندك فقط.<div class="row" style="margin-top:8px"><button onclick="location.hash='#join';location.reload()">صفحة المشتركين</button><button onclick="location.hash='#admin';location.reload()">صفحة الأدمن (كلمة المرور 1234)</button><button onclick="localStorage.removeItem('cid');location.reload()">تسجيل كمشترك جديد</button><button class="d" onclick="__reset()">مسح البيانات</button></div></div>
+<div class="wrap">
 <header>
 <div class="sub">🏆 حفل تقاعد</div>
 <h1>الأستاذ محمد صائغ</h1>
@@ -75,65 +79,13 @@ input,select{background:var(--bg);border:1px solid var(--line);border-radius:10p
 <div id="app"><div class="card note">جارٍ التحميل…</div></div>
 </div>
 <script>
-/* ===== معاينة: سيرفر وهمي داخل المتصفح (لا يحتاج رفع) ===== */
-(function(){
-function demoGen(t,count,tryAdd,offset){
- const F=['خالد','فهد','سعد','ناصر','عبدالله','سلطان','تركي','ماجد','بندر','فيصل','وليد','يوسف','إبراهيم','أحمد','عمر','سالم'];
- const Fa=['محمد','عبدالعزيز','صالح','علي','حسن','إبراهيم','سعود','عبدالرحمن'];
- const Fm=['الحربي','القحطاني','الغامدي','الزهراني','العتيبي','الشمري','الدوسري','المطيري','السبيعي','الشهري'];
- const TM=['النسور','الصقور','الفهود','الأسود','العقاب','الذئاب','الشواهين','النمور','الرعد','البرق','الإعصار','الجوارح','الهلال','القمم','الأبطال','الفرسان'];
- const nm=k=>F[k%F.length]+' '+Fa[(k+Math.floor(k/F.length))%Fa.length]+' '+Fm[(k*3+Math.floor(k/8))%Fm.length];
- let k=Math.floor(Math.random()*50),added=0,guard=0;
- while(added<count&&guard++<3000){
-  let rec;
-  if(t==='tennis'){const a=nm(k++),b=nm(k++);if(a===b)continue;const q=(offset||0)+added;rec={n:TM[q%TM.length]+(q>=TM.length?' '+(Math.floor(q/TM.length)+1):''),t,p1:a,p2:b,demo:true}}
-  else rec={n:nm(k++),t,demo:true};
-  if(tryAdd(rec))added++;
- }
- return added;
-}
-
-const K='sayegh_preview_v1';let st;try{st=JSON.parse(localStorage.getItem(K))}catch(e){}
-if(!st)st={regs:{},draws:{}};
-const save=()=>{try{localStorage.setItem(K,JSON.stringify(st))}catch(e){}};
-const TIDS=['belot','domino','tennis'],TOKEN='preview-token',PASS='1234';
-const clean=n=>String(n||'').trim().slice(0,40),norm=s=>String(s||'').trim().replace(/\s+/g,' '),triple=s=>norm(s).split(' ').filter(Boolean).length>=3;
-function validate(t,b){if(!TIDS.includes(t))return null;
- if(t==='tennis'){const n=norm(clean(b.team||b.name)),p1=norm(clean(b.p1)),p2=norm(clean(b.p2));if(!n||!triple(p1)||!triple(p2)||p1===p2)return null;return{n,t,p1,p2}}
- const n=norm(clean(b.name));return triple(n)?{n,t}:null}
-const namesOf=r=>r.t==='tennis'?[r.p1,r.p2]:[r.n];
-function taken(rec,ex){const u=new Set();for(const[id,r]of Object.entries(st.regs))if(id!==ex)namesOf(r).forEach(x=>u.add(norm(x)));return namesOf(rec).some(x=>u.has(norm(x)))}
-const R=(c,o)=>new Response(JSON.stringify(o),{status:c,headers:{'Content-Type':'application/json'}});
-window.fetch=async(url,opt={})=>{
- const m=(opt.method||'GET').toUpperCase();let b={};try{b=JSON.parse(opt.body||'{}')}catch(e){}
- const auth=((opt.headers||{}).Authorization||'')==='Bearer '+TOKEN;
- if(url==='/api/state')return R(200,st);
- if(url==='/api/register'){const rec=validate(b.t,b);if(!/^[a-z0-9]{8,40}$/i.test(b.cid||'')||!rec)return R(400,{error:'bad'});const id='c_'+b.cid;
-  if(st.regs[id])return R(409,{error:'already'});if(taken(rec,id))return R(409,{error:'dup'});rec.ts=Date.now();st.regs[id]=rec;save();return R(200,{ok:1})}
- if(url==='/api/admin/login')return b.password===PASS?R(200,{token:TOKEN}):R(401,{error:'wrong'});
- if(url.startsWith('/api/admin/')){if(!auth)return R(401,{error:'unauthorized'});
-  const p=url.split('/'),kind=p[3],id=decodeURIComponent(p[4]||'');
-  if(kind==='reg'&&m==='POST'){const rec=validate(b.t,b);if(!rec)return R(400,{error:'bad'});if(taken(rec,null))return R(409,{error:'dup'});rec.ts=Date.now();st.regs['m_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)]=rec;save();return R(200,{ok:1})}
-  if(kind==='reg'&&m==='PATCH'){const r=st.regs[id];if(!r)return R(400,{error:'bad'});const rec=validate(r.t,{name:b.name,team:b.name,p1:b.p1,p2:b.p2});if(!rec)return R(400,{error:'bad'});if(taken(rec,id))return R(409,{error:'dup'});rec.ts=r.ts;st.regs[id]=rec;save();return R(200,{ok:1})}
-  if(kind==='demo'&&m==='POST'){const t=b.t,c=Math.min(Math.max(parseInt(b.count)||0,1),32);if(!TIDS.includes(t))return R(400,{error:'bad'});demoGen(t,c,rec=>{if(taken(rec,null))return false;rec.ts=Date.now();st.regs['d_'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)]=rec;return true},Object.values(st.regs).filter(r=>r.t===t).length);save();return R(200,{ok:1})}
-  if(kind==='demo-clear'&&m==='POST'){const ts=new Set();for(const[id,r]of Object.entries(st.regs))if(r.demo){ts.add(r.t);delete st.regs[id]}ts.forEach(t=>{delete st.draws[t];delete st.draws[t+'_teams']});save();return R(200,{ok:1})}
-  if(kind==='reset'&&m==='POST'){st.regs={};st.draws={};save();return R(200,{ok:1})}
-  if(kind==='reg'&&m==='DELETE'){delete st.regs[id];save();return R(200,{ok:1})}
-  if(kind==='draw'&&m==='PUT'){if(!TIDS.concat(TIDS.map(x=>x+'_teams')).includes(id)||typeof b.r!=='string')return R(400,{error:'bad'});st.draws[id]={r:b.r,ts:Date.now()};save();return R(200,{ok:1})}
-  if(kind==='draw'&&m==='DELETE'){delete st.draws[id];save();return R(200,{ok:1})}}
- return R(404,{error:'nf'})};
-window.__reset=()=>{if(confirm('مسح كل بيانات المعاينة؟')){localStorage.removeItem(K);localStorage.removeItem('cid');sessionStorage.clear();location.reload()}};
-window.addEventListener('hashchange',()=>location.reload());
-})();
-</script>
-<script>
 const T=[
 {id:'belot',n:'بطولة البلوت العالمية',e:'🃏'},
 {id:'domino',n:'بطولة الضومنة التاريخية',e:'🎲'},
 {id:'tennis',n:'بطولة التنس للمحترفين',e:'🎾'}];
 const tn=id=>(T.find(t=>t.id===id)||{}).n||'';
 const $app=document.getElementById('app');
-const ADMIN=location.hash==='#admin';
+const ADMIN=location.pathname.replace(/\/+$/,'')==='/admin';
 let cid=localStorage.getItem('cid');
 if(!cid){cid=Array.from(crypto.getRandomValues(new Uint8Array(12))).map(b=>b.toString(16).padStart(2,'0')).join('');localStorage.setItem('cid',cid)}
 const me='c_'+cid;
@@ -142,6 +94,7 @@ let regs={},draws={},ready=false,loadErr=false,last='';
 let tab='belot',form={name:'',t:'',team:'',p1:'',p2:''},pending=false;
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const regList=t=>Object.entries(regs).filter(([,r])=>r.t===t).map(([i,r])=>({i,n:r.n,ts:r.ts||0,p1:r.p1,p2:r.p2,demo:r.demo})).sort((a,b)=>a.ts-b.ts);
+const slotLines=p=>{if(!p)return '';const r=p.p1?p:regs[p.i];if(!r||!r.p1)return '';return '<small class="note" style="display:block;font-weight:400;text-decoration:none;line-height:1.5">👤 '+esc(r.p1)+'<br>👤 '+esc(r.p2)+'</small>'};
 const triple=s=>String(s||'').trim().split(/\s+/).filter(Boolean).length>=3;
 const getTeams=t=>{try{const d=draws[t+'_teams'];return d?JSON.parse(d.r).teams:null}catch(e){return null}};
 const inTeams=(T,id)=>T.some(x=>x.ids.includes(id));
@@ -177,10 +130,12 @@ function makeRounds(list){
   for(let s=size/4;s>=1;s/=2)rounds.push(Array.from({length:s},()=>({a:null,b:null,w:null})));
   return normalize(rounds);
 }
+const TEAM_NAMES=['النسور','الصقور','الفهود','الأسود','النمور','الذئاب','العقبان','الشواهين','الجوارح','الفرسان','الأبطال','الأساطير','العمالقة','الصناديد','البواسل','الجبابرة','الرعد','البرق','الإعصار','العاصفة','الزلزال','البركان','الهلال','النجوم','القمم','الأطلس','الملوك','السلاطين','القناصة','الحراس','المغاوير','الأشاوس','الصقور الذهبية','الفهود السوداء'];
 function makeTeams(list){
   const sh=list.slice();for(let i=sh.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[sh[i],sh[j]]=[sh[j],sh[i]]}
   const teams=[];
-  for(let k=0;k+1<sh.length;k+=2){const a=sh[k],b=sh[k+1];teams.push({i:'T'+(teams.length+1)+Math.random().toString(36).slice(2,6),n:'فريق '+(teams.length+1),p1:a.n,p2:b.n,ids:[a.i,b.i]})}
+  const pool=TEAM_NAMES.slice();for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]]}
+  for(let k=0;k+1<sh.length;k+=2){const a=sh[k],b=sh[k+1];const q=teams.length;teams.push({i:'T'+(q+1)+Math.random().toString(36).slice(2,6),n:q<pool.length?pool[q]:pool[q%pool.length]+' '+(Math.floor(q/pool.length)+1),p1:a.n,p2:b.n,ids:[a.i,b.i]})}
   return {teams,spare:sh.length%2?sh[sh.length-1]:null};
 }
 function normalize(R){
@@ -214,7 +169,7 @@ function bracketHTML(t,edit){
           h+='<select data-slot="'+t+'|'+r+'|'+i+'|'+side+'">'+(t==='tennis'?'<option value="">— فارغ (BYE) —</option>':'')+
           pool.map(x=>'<option value="'+esc(x.i)+'"'+(p&&p.i===x.i?' selected':'')+'>'+esc(x.n)+'</option>').join('')+
           (p&&!pool.find(x=>x.i===p.i)?'<option value="'+esc(p.i)+'" selected>'+esc(p.n)+'</option>':'')+'</select>';
-        }else h+='<span>'+(p?esc(p.n)+slotPlayers(p):(r===0?'BYE':'—'))+'</span>';
+        }else h+='<span>'+(p?esc(p.n)+slotLines(p):(r===0?'BYE':'—'))+'</span>';
         const sv=side==='a'?m.sa:m.sb;
         if(edit&&m.a&&m.b){h+='<input class="sc" type="number" min="0" inputmode="numeric" placeholder="0" data-sc="'+t+'|'+r+'|'+i+'|'+side+'" value="'+(sv!=null?sv:'')+'">'}
         else if(sv!=null&&p){h+='<b class="scv">'+sv+'</b>'}
@@ -251,7 +206,7 @@ function joinView(){
     T.map(x=>'<div class="opt '+(form.t===x.id?'sel':'')+'" data-pick="'+x.id+'"><span class="e">'+x.e+'</span><div><b>'+esc(x.n)+'</b><small>'+regList(x.id).length+(x.id==='tennis'?' فريق (كل فريق لاعبان)':' مشترك')+'</small></div></div>').join('')+'</div>'+formFields()+
     (form.t?'<button class="p" id="go" style="width:100%">تسجيل</button>':'');
   }
-  return h+'</div><div class="card"><h2>النتائج والقرعة</h2>'+tabsHTML()+playersHTML(tab)+teamsPublic(tab)+bracketHTML(tab,false)+'</div>';
+  return h+'</div><div class="card"><h2>النتائج والقرعة</h2>'+tabsHTML()+(teamsTable(tab)||playersHTML(tab))+bracketHTML(tab,false)+'</div>';
 }
 function loginView(){
   return '<div class="card"><h2>دخول الأدمن</h2><div class="row"><input id="pw" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr" placeholder="كلمة المرور"><button class="p" id="login">دخول</button></div></div>';
@@ -263,7 +218,7 @@ function drawControls(l,R){
   if(l.length<4)h+='<p class="note">يلزم 4 مشتركين على الأقل.</p>';
   else if(l.length%2&&!TM)h+='<p class="note">⚠️ العدد فردي: سيبقى مشترك واحد احتياطيًا بدون فريق.</p>';
   if(TM){
-    h+='<ul class="plist">'+TM.map(x=>'<li><span style="width:70px;color:var(--mute)">'+esc(x.n)+'</span><span>'+esc(x.p1)+' و '+esc(x.p2)+'</span></li>').join('')+'</ul>';
+    h+=teamsTable(tab);
     const sp=l.filter(x=>!inTeams(TM,x.i));
     if(sp.length)h+='<p class="note">احتياطي بدون فريق: '+sp.map(x=>'<span class="tag">'+esc(x.n)+'</span>').join(' ')+'</p>';
   }
@@ -271,9 +226,13 @@ function drawControls(l,R){
   if(!TM)h+='<p class="note">كوّن الفرق أولًا ثم أجرِ القرعة.</p>';
   return h;
 }
-function teamsPublic(t){
-  const TM=t==='tennis'?null:getTeams(t);if(!TM||!TM.length)return '';
-  return '<p class="note">الفرق ('+TM.length+'):</p><ul class="plist">'+TM.map(x=>'<li><span style="width:70px;color:var(--mute)">'+esc(x.n)+'</span><span>'+esc(x.p1)+' و '+esc(x.p2)+'</span></li>').join('')+'</ul>';
+function teamsTable(t){
+  let rows;
+  if(t==='tennis')rows=regList(t).map(x=>({n:x.n,p1:x.p1,p2:x.p2}));
+  else{const TM=getTeams(t);rows=TM?TM.map(x=>({n:x.n,p1:x.p1,p2:x.p2})):[]}
+  if(!rows.length)return '';
+  return '<h3 style="margin-top:12px">📋 جدول الفرق ('+rows.length+')</h3><div style="overflow-x:auto"><table class="tbl"><thead><tr><th>#</th><th>اسم الفريق</th><th>اللاعب الأول</th><th>اللاعب الثاني</th></tr></thead><tbody>'+
+  rows.map((x,k)=>'<tr><td>'+(k+1)+'</td><td class="tn">'+esc(x.n)+'</td><td>'+esc(x.p1)+'</td><td>'+esc(x.p2)+'</td></tr>').join('')+'</tbody></table></div>';
 }
 function adminView(){
   const o=location.origin;
