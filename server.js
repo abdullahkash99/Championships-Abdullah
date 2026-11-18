@@ -13,6 +13,7 @@ const SECRET = process.env.SECRET || ('s_' + ADMIN_PASSWORD);
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const FILE = path.join(DATA_DIR, 'state.json');
 const TIDS = ['belot', 'domino', 'tennis'];
+const DIDS = TIDS.concat(TIDS.map(x => x + '_teams'));
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 let state = { regs: {}, draws: {} };
@@ -135,13 +136,13 @@ http.createServer(async (req, res) => {
     if (kind === 'demo-clear' && m === 'POST') {
       const ts = new Set();
       for (const [rid, r] of Object.entries(state.regs)) if (r.demo) { ts.add(r.t); delete state.regs[rid]; }
-      ts.forEach(t => delete state.draws[t]);
+      ts.forEach(t => { delete state.draws[t]; delete state.draws[t + '_teams']; });
       save(); return send(res, 200, { ok: true });
     }
     if (kind === 'reset' && m === 'POST') { state = { regs: {}, draws: {} }; save(); return send(res, 200, { ok: true }); }
     if (kind === 'reg' && m === 'DELETE') { delete state.regs[id]; save(); return send(res, 200, { ok: true }); }
     if (kind === 'draw' && m === 'PUT') {
-      if (!TIDS.includes(id) || typeof b.r !== 'string') return send(res, 400, { error: 'bad' });
+      if (!DIDS.includes(id) || typeof b.r !== 'string') return send(res, 400, { error: 'bad' });
       state.draws[id] = { r: b.r, ts: Date.now() }; save(); return send(res, 200, { ok: true });
     }
     if (kind === 'draw' && m === 'DELETE') { delete state.draws[id]; save(); return send(res, 200, { ok: true }); }

@@ -91,6 +91,8 @@ let tab='belot',form={name:'',t:'',team:'',p1:'',p2:''},pending=false;
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const regList=t=>Object.entries(regs).filter(([,r])=>r.t===t).map(([i,r])=>({i,n:r.n,ts:r.ts||0,p1:r.p1,p2:r.p2,demo:r.demo})).sort((a,b)=>a.ts-b.ts);
 const triple=s=>String(s||'').trim().split(/\s+/).filter(Boolean).length>=3;
+const getTeams=t=>{try{const d=draws[t+'_teams'];return d?JSON.parse(d.r).teams:null}catch(e){return null}};
+const inTeams=(T,id)=>T.some(x=>x.ids.includes(id));
 const allSlots=rd=>{const seen={},out=[];rd.forEach(m=>['a','b'].forEach(s=>{const x=m[s];if(x&&!seen[x.i]){seen[x.i]=1;out.push(x)}}));return out};
 const inDraw=(R,id)=>R[0].some(m=>['a','b'].some(s=>m[s]&&(m[s].i===id||(m[s].ids&&m[s].ids.includes(id)))));
 const teamOf=r=>r&&r.t==='tennis'&&r.p1?' <small class="note">('+esc(r.p1)+' و '+esc(r.p2)+')</small>':'';
@@ -197,10 +199,29 @@ function joinView(){
     T.map(x=>'<div class="opt '+(form.t===x.id?'sel':'')+'" data-pick="'+x.id+'"><span class="e">'+x.e+'</span><div><b>'+esc(x.n)+'</b><small>'+regList(x.id).length+(x.id==='tennis'?' فريق (كل فريق لاعبان)':' مشترك')+'</small></div></div>').join('')+'</div>'+formFields()+
     (form.t?'<button class="p" id="go" style="width:100%">تسجيل</button>':'');
   }
-  return h+'</div><div class="card"><h2>النتائج والقرعة</h2>'+tabsHTML()+playersHTML(tab)+bracketHTML(tab,false)+'</div>';
+  return h+'</div><div class="card"><h2>النتائج والقرعة</h2>'+tabsHTML()+playersHTML(tab)+teamsPublic(tab)+bracketHTML(tab,false)+'</div>';
 }
 function loginView(){
   return '<div class="card"><h2>دخول الأدمن</h2><div class="row"><input id="pw" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr" placeholder="كلمة المرور"><button class="p" id="login">دخول</button></div></div>';
+}
+function drawControls(l,R){
+  if(tab==='tennis')return '<div class="row" style="margin-top:14px"><button class="p" id="draw"'+(l.length<2?' disabled':'')+'>🎲 '+(R?'إعادة القرعة':'إجراء القرعة')+'</button>'+(R?'<button class="d" id="undraw">حذف القرعة</button>':'')+'</div>'+(l.length<2?'<p class="note">يلزم فريقان على الأقل.</p>':'');
+  const TM=getTeams(tab);
+  let h='<h3 style="margin-top:16px">الخطوة 1: تكوين الفرق (كل فريق لاعبان)</h3><div class="row"><button class="p" id="mkteams"'+(l.length<4?' disabled':'')+'>👥 '+(TM?'إعادة تكوين الفرق':'تكوين الفرق عشوائيًا')+'</button></div>';
+  if(l.length<4)h+='<p class="note">يلزم 4 مشتركين على الأقل.</p>';
+  else if(l.length%2&&!TM)h+='<p class="note">⚠️ العدد فردي: سيبقى مشترك واحد احتياطيًا بدون فريق.</p>';
+  if(TM){
+    h+='<ul class="plist">'+TM.map(x=>'<li><span style="width:70px;color:var(--mute)">'+esc(x.n)+'</span><span>'+esc(x.p1)+' و '+esc(x.p2)+'</span></li>').join('')+'</ul>';
+    const sp=l.filter(x=>!inTeams(TM,x.i));
+    if(sp.length)h+='<p class="note">احتياطي بدون فريق: '+sp.map(x=>'<span class="tag">'+esc(x.n)+'</span>').join(' ')+'</p>';
+  }
+  h+='<h3 style="margin-top:16px">الخطوة 2: القرعة بين الفرق</h3><div class="row"><button class="p" id="draw"'+(TM&&TM.length>=2?'':' disabled')+'>🎲 '+(R?'إعادة القرعة بين الفرق':'إجراء القرعة بين الفرق')+'</button>'+(R?'<button class="d" id="undraw">حذف القرعة</button>':'')+'</div>';
+  if(!TM)h+='<p class="note">كوّن الفرق أولًا ثم أجرِ القرعة.</p>';
+  return h;
+}
+function teamsPublic(t){
+  const TM=t==='tennis'?null:getTeams(t);if(!TM||!TM.length)return '';
+  return '<p class="note">الفرق ('+TM.length+'):</p><ul class="plist">'+TM.map(x=>'<li><span style="width:70px;color:var(--mute)">'+esc(x.n)+'</span><span>'+esc(x.p1)+' و '+esc(x.p2)+'</span></li>').join('')+'</ul>';
 }
 function adminView(){
   const o=location.origin;
@@ -209,12 +230,11 @@ function adminView(){
   const l=regList(tab),R=getR(tab),need=tab==='tennis'?2:4;
   h+='<div class="card"><h2>إدارة البطولات</h2>'+tabsHTML()+
   '<h3>المشتركون ('+l.length+')</h3><ul class="plist">'+
-  l.map((x,k)=>'<li><span class="n">'+(k+1)+'</span><span>'+esc(x.n)+(tab==='tennis'?teamOf({t:'tennis',p1:x.p1,p2:x.p2}):'')+(x.demo?' <span class="tag">تجريبي</span>':'')+(R&&!inDraw(R,x.i)?' <span class="tag">'+(tab==='tennis'?'خارج القرعة':'احتياطي / خارج القرعة')+'</span>':'')+'</span><button data-ren="'+esc(x.i)+'">تعديل</button><button class="d" data-del="'+esc(x.i)+'">حذف</button></li>').join('')+
+  l.map((x,k)=>'<li><span class="n">'+(k+1)+'</span><span>'+esc(x.n)+(tab==='tennis'?teamOf({t:'tennis',p1:x.p1,p2:x.p2}):'')+(x.demo?' <span class="tag">تجريبي</span>':'')+(tab!=='tennis'&&getTeams(tab)&&!inTeams(getTeams(tab),x.i)?' <span class="tag">احتياطي</span>':'')+'</span><button data-ren="'+esc(x.i)+'">تعديل</button><button class="d" data-del="'+esc(x.i)+'">حذف</button></li>').join('')+
   (l.length?'':'<li class="note">لا يوجد مشتركون</li>')+'</ul>'+
   '<div class="row"><input id="addn" placeholder="'+(tab==='tennis'?'إضافة فريق (اسم الفريق)':'إضافة مشترك (اسم ثلاثي)')+'" maxlength="40"><button id="add">إضافة</button></div>'+
   '<div class="row" style="margin-top:8px"><button id="demo">🧪 إضافة مشتركين تجريبيين</button>'+(Object.values(regs).some(r=>r.demo)?'<button class="d" id="democlear">حذف التجريبيين</button>':'')+'</div>'+
-  '<div class="row" style="margin-top:14px"><button class="p" id="draw"'+(l.length<need?' disabled':'')+'>🎲 '+(R?'إعادة القرعة':'إجراء القرعة')+'</button>'+(R?'<button class="d" id="undraw">حذف القرعة</button>':'')+'</div>'+
-  (l.length<need?'<p class="note">'+(tab==='tennis'?'يلزم فريقان على الأقل.':'يلزم 4 مشتركين على الأقل (كل فريق لاعبان يُختاران عشوائيًا).')+'</p>':'')+(tab!=='tennis'&&l.length%2?'<p class="note">⚠️ العدد فردي: سيبقى مشترك واحد احتياطيًا بدون فريق.</p>':'')+
+  drawControls(l,R)+
   '<h3 style="margin-top:16px">القرعة</h3><p class="note">يمكنك تغيير أي اسم في الدور الأول من القائمة، وتحديد الفائز بزر «فاز».</p>'+bracketHTML(tab,true)+'</div>'+
   '<div class="card"><h2>منطقة الخطر</h2><p class="note">يمسح جميع المشتركين وجميع القرعات في كل البطولات نهائيًا.</p><button class="d" id="resetall">🗑️ تصفير كل البيانات</button></div>';
   return h;
@@ -246,7 +266,7 @@ document.addEventListener('change',async e=>{
   await saveR(t,R);
 });
 document.addEventListener('click',async e=>{
-  const b=e.target.closest('[data-tab],[data-pick],[data-win],[data-ren],[data-del],[data-copy],#go,#add,#draw,#undraw,#login,#resetall,#demo,#democlear,[data-save],[data-clr]');
+  const b=e.target.closest('[data-tab],[data-pick],[data-win],[data-ren],[data-del],[data-copy],#go,#add,#draw,#undraw,#login,#mkteams,#resetall,#demo,#democlear,[data-save],[data-clr]');
   if(!b)return;
   if(b.dataset.tab){tab=b.dataset.tab;render(true);return}
   if(b.dataset.pick){const n=document.getElementById('nm');if(n)form.name=n.value;form.t=b.dataset.pick;render(true);return}
@@ -287,11 +307,21 @@ document.addEventListener('click',async e=>{
       if(t==='tennis'){const a1=prompt('اللاعب الأول (اسم ثلاثي)',r.p1||'');if(!a1)return;const a2=prompt('اللاعب الثاني (اسم ثلاثي)',r.p2||'');if(!a2)return;body.p1=a1.trim();body.p2=a2.trim();if(!triple(body.p1)||!triple(body.p2)){alert('اسم كل لاعب لازم يكون ثلاثي');return}}
       else if(!triple(nn)){alert('الاسم لازم يكون ثلاثي');return}
       try{await api('PATCH','/api/admin/reg/'+id,body)}catch(x){alert(x.message==='dup'?'أحد الأسماء مسجّل مسبقًا':'بيانات غير صحيحة');return}
+      if(t!=='tennis'){const TM=getTeams(t);if(TM){TM.forEach(x=>{const k=x.ids.indexOf(id);if(k===0)x.p1=nn;if(k===1)x.p2=nn});await api('PUT','/api/admin/draw/'+t+'_teams',{r:JSON.stringify({teams:TM})})}}
       const R=getR(t);if(R){R.forEach(rd=>rd.forEach(m=>['a','b'].forEach(s=>{const x=m[s];if(!x)return;if(x.i===id)x.n=nn;if(x.ids){const k=x.ids.indexOf(id);if(k===0)x.p1=nn;if(k===1)x.p2=nn}})));await saveR(t,R)}
     }else if(b.dataset.del){
       const id=b.dataset.del;if(!confirm('حذف «'+regs[id].n+'»؟'))return;
       const t=regs[id].t;await api('DELETE','/api/admin/reg/'+id);
+      if(t!=='tennis'){const TM=getTeams(t);if(TM)await api('PUT','/api/admin/draw/'+t+'_teams',{r:JSON.stringify({teams:TM.filter(x=>!x.ids.includes(id))})})}
       const R=getR(t);if(R){const gone=new Set();R[0].forEach(m=>['a','b'].forEach(s=>{const x=m[s];if(x&&(x.i===id||(x.ids&&x.ids.includes(id)))){gone.add(x.i);m[s]=null}}));R.forEach(rd=>rd.forEach(m=>{if(m.w&&gone.has(m.w))m.w=null}));await saveR(t,R)}
+    }else if(b.id==='mkteams'){
+      const L=regList(tab);if(L.length<4){alert('يلزم 4 مشتركين على الأقل');return}
+      const had=getTeams(tab),R0=getR(tab);
+      const {teams,spare}=makeTeams(L.map(x=>({i:x.i,n:x.n})));
+      if(spare&&!confirm('العدد فردي: «'+spare.n+'» سيبقى احتياطيًا بدون فريق. متابعة؟'))return;
+      if((had||R0)&&!confirm('ستُستبدل الفرق الحالية وتُحذف القرعة إن وجدت. متابعة؟'))return;
+      if(R0)await api('DELETE','/api/admin/draw/'+tab);
+      await api('PUT','/api/admin/draw/'+tab+'_teams',{r:JSON.stringify({teams})});
     }else if(b.id==='draw'){
       if(getR(tab)&&!confirm('ستُستبدل القرعة الحالية بقرعة جديدة. متابعة؟'))return;
       const L=regList(tab);
@@ -299,10 +329,9 @@ document.addEventListener('click',async e=>{
         if(L.length<2){alert('يلزم فريقان على الأقل');return}
         await saveR(tab,makeRounds(L.map(x=>({i:x.i,n:x.n}))));
       }else{
-        if(L.length<4){alert('يلزم 4 مشتركين على الأقل');return}
-        const {teams,spare}=makeTeams(L.map(x=>({i:x.i,n:x.n})));
-        if(spare&&!confirm('العدد فردي: «'+spare.n+'» سيبقى احتياطيًا بدون فريق. متابعة؟'))return;
-        await saveR(tab,makeRounds(teams));
+        const TM=getTeams(tab);
+        if(!TM||TM.length<2){alert('كوّن الفرق أولًا');return}
+        await saveR(tab,makeRounds(TM.map(x=>Object.assign({},x))));
       }
     }else if(b.dataset.save){
       const [t,r,i]=b.dataset.save.split('|');
