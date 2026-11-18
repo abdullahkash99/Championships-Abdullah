@@ -62,6 +62,10 @@ input,select{background:var(--bg);border:1px solid var(--line);border-radius:10p
 .s input.sc{width:58px;flex:none;text-align:center;padding:4px 6px}
 .scv{min-width:24px;text-align:center;color:var(--acc)}
 .save-row{justify-content:flex-end;background:var(--soft)}
+.tbl{width:100%;border-collapse:collapse;font-size:15px;margin:6px 0 12px}
+.tbl th,.tbl td{border:1px solid var(--line);padding:8px 10px;text-align:right}
+.tbl th{background:var(--soft);color:var(--acc)}
+.tbl td.tn{font-weight:800}
 .tag{display:inline-block;background:var(--soft);border-radius:8px;padding:2px 8px;font-size:13px;color:var(--acc)}
 </style>
 </head>
@@ -90,6 +94,7 @@ let regs={},draws={},ready=false,loadErr=false,last='';
 let tab='belot',form={name:'',t:'',team:'',p1:'',p2:''},pending=false;
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const regList=t=>Object.entries(regs).filter(([,r])=>r.t===t).map(([i,r])=>({i,n:r.n,ts:r.ts||0,p1:r.p1,p2:r.p2,demo:r.demo})).sort((a,b)=>a.ts-b.ts);
+const slotLines=p=>{if(!p)return '';const r=p.p1?p:regs[p.i];if(!r||!r.p1)return '';return '<small class="note" style="display:block;font-weight:400;text-decoration:none;line-height:1.5">👤 '+esc(r.p1)+'<br>👤 '+esc(r.p2)+'</small>'};
 const triple=s=>String(s||'').trim().split(/\s+/).filter(Boolean).length>=3;
 const getTeams=t=>{try{const d=draws[t+'_teams'];return d?JSON.parse(d.r).teams:null}catch(e){return null}};
 const inTeams=(T,id)=>T.some(x=>x.ids.includes(id));
@@ -125,10 +130,12 @@ function makeRounds(list){
   for(let s=size/4;s>=1;s/=2)rounds.push(Array.from({length:s},()=>({a:null,b:null,w:null})));
   return normalize(rounds);
 }
+const TEAM_NAMES=['النسور','الصقور','الفهود','الأسود','النمور','الذئاب','العقبان','الشواهين','الجوارح','الفرسان','الأبطال','الأساطير','العمالقة','الصناديد','البواسل','الجبابرة','الرعد','البرق','الإعصار','العاصفة','الزلزال','البركان','الهلال','النجوم','القمم','الأطلس','الملوك','السلاطين','القناصة','الحراس','المغاوير','الأشاوس','الصقور الذهبية','الفهود السوداء'];
 function makeTeams(list){
   const sh=list.slice();for(let i=sh.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[sh[i],sh[j]]=[sh[j],sh[i]]}
   const teams=[];
-  for(let k=0;k+1<sh.length;k+=2){const a=sh[k],b=sh[k+1];teams.push({i:'T'+(teams.length+1)+Math.random().toString(36).slice(2,6),n:'فريق '+(teams.length+1),p1:a.n,p2:b.n,ids:[a.i,b.i]})}
+  const pool=TEAM_NAMES.slice();for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]]}
+  for(let k=0;k+1<sh.length;k+=2){const a=sh[k],b=sh[k+1];const q=teams.length;teams.push({i:'T'+(q+1)+Math.random().toString(36).slice(2,6),n:q<pool.length?pool[q]:pool[q%pool.length]+' '+(Math.floor(q/pool.length)+1),p1:a.n,p2:b.n,ids:[a.i,b.i]})}
   return {teams,spare:sh.length%2?sh[sh.length-1]:null};
 }
 function normalize(R){
@@ -162,7 +169,7 @@ function bracketHTML(t,edit){
           h+='<select data-slot="'+t+'|'+r+'|'+i+'|'+side+'">'+(t==='tennis'?'<option value="">— فارغ (BYE) —</option>':'')+
           pool.map(x=>'<option value="'+esc(x.i)+'"'+(p&&p.i===x.i?' selected':'')+'>'+esc(x.n)+'</option>').join('')+
           (p&&!pool.find(x=>x.i===p.i)?'<option value="'+esc(p.i)+'" selected>'+esc(p.n)+'</option>':'')+'</select>';
-        }else h+='<span>'+(p?esc(p.n)+slotPlayers(p):(r===0?'BYE':'—'))+'</span>';
+        }else h+='<span>'+(p?esc(p.n)+slotLines(p):(r===0?'BYE':'—'))+'</span>';
         const sv=side==='a'?m.sa:m.sb;
         if(edit&&m.a&&m.b){h+='<input class="sc" type="number" min="0" inputmode="numeric" placeholder="0" data-sc="'+t+'|'+r+'|'+i+'|'+side+'" value="'+(sv!=null?sv:'')+'">'}
         else if(sv!=null&&p){h+='<b class="scv">'+sv+'</b>'}
@@ -199,7 +206,7 @@ function joinView(){
     T.map(x=>'<div class="opt '+(form.t===x.id?'sel':'')+'" data-pick="'+x.id+'"><span class="e">'+x.e+'</span><div><b>'+esc(x.n)+'</b><small>'+regList(x.id).length+(x.id==='tennis'?' فريق (كل فريق لاعبان)':' مشترك')+'</small></div></div>').join('')+'</div>'+formFields()+
     (form.t?'<button class="p" id="go" style="width:100%">تسجيل</button>':'');
   }
-  return h+'</div><div class="card"><h2>النتائج والقرعة</h2>'+tabsHTML()+playersHTML(tab)+teamsPublic(tab)+bracketHTML(tab,false)+'</div>';
+  return h+'</div><div class="card"><h2>النتائج والقرعة</h2>'+tabsHTML()+(teamsTable(tab)||playersHTML(tab))+bracketHTML(tab,false)+'</div>';
 }
 function loginView(){
   return '<div class="card"><h2>دخول الأدمن</h2><div class="row"><input id="pw" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" dir="ltr" placeholder="كلمة المرور"><button class="p" id="login">دخول</button></div></div>';
@@ -211,7 +218,7 @@ function drawControls(l,R){
   if(l.length<4)h+='<p class="note">يلزم 4 مشتركين على الأقل.</p>';
   else if(l.length%2&&!TM)h+='<p class="note">⚠️ العدد فردي: سيبقى مشترك واحد احتياطيًا بدون فريق.</p>';
   if(TM){
-    h+='<ul class="plist">'+TM.map(x=>'<li><span style="width:70px;color:var(--mute)">'+esc(x.n)+'</span><span>'+esc(x.p1)+' و '+esc(x.p2)+'</span></li>').join('')+'</ul>';
+    h+=teamsTable(tab);
     const sp=l.filter(x=>!inTeams(TM,x.i));
     if(sp.length)h+='<p class="note">احتياطي بدون فريق: '+sp.map(x=>'<span class="tag">'+esc(x.n)+'</span>').join(' ')+'</p>';
   }
@@ -219,9 +226,13 @@ function drawControls(l,R){
   if(!TM)h+='<p class="note">كوّن الفرق أولًا ثم أجرِ القرعة.</p>';
   return h;
 }
-function teamsPublic(t){
-  const TM=t==='tennis'?null:getTeams(t);if(!TM||!TM.length)return '';
-  return '<p class="note">الفرق ('+TM.length+'):</p><ul class="plist">'+TM.map(x=>'<li><span style="width:70px;color:var(--mute)">'+esc(x.n)+'</span><span>'+esc(x.p1)+' و '+esc(x.p2)+'</span></li>').join('')+'</ul>';
+function teamsTable(t){
+  let rows;
+  if(t==='tennis')rows=regList(t).map(x=>({n:x.n,p1:x.p1,p2:x.p2}));
+  else{const TM=getTeams(t);rows=TM?TM.map(x=>({n:x.n,p1:x.p1,p2:x.p2})):[]}
+  if(!rows.length)return '';
+  return '<h3 style="margin-top:12px">📋 جدول الفرق ('+rows.length+')</h3><div style="overflow-x:auto"><table class="tbl"><thead><tr><th>#</th><th>اسم الفريق</th><th>اللاعب الأول</th><th>اللاعب الثاني</th></tr></thead><tbody>'+
+  rows.map((x,k)=>'<tr><td>'+(k+1)+'</td><td class="tn">'+esc(x.n)+'</td><td>'+esc(x.p1)+'</td><td>'+esc(x.p2)+'</td></tr>').join('')+'</tbody></table></div>';
 }
 function adminView(){
   const o=location.origin;
