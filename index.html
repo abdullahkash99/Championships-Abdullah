@@ -77,7 +77,7 @@ input,select{background:var(--bg);border:1px solid var(--line);border-radius:10p
 <p>بطولات الحفل</p>
 </header>
 <div id="app"><div class="card note">جارٍ التحميل…</div></div>
-<p class="note" style="text-align:center;font-size:12px">نسخة 10 — تعديل الحد الأقصى من صفحة الأدمن</p>
+<p class="note" style="text-align:center;font-size:12px">نسخة 11 — تقدّم الفريق تلقائيًا إذا كان منافسه فارغًا</p>
 </div>
 <script>
 const T=[
@@ -146,8 +146,16 @@ function makeTeams(list){
   return {teams,spare:sh.length%2?sh[sh.length-1]:null};
 }
 function normalize(R){
+  const dead=(r,i)=>{const m=R[r][i];return r===0?(!m.a&&!m.b):(dead(r-1,2*i)&&dead(r-1,2*i+1))};
   R.forEach((rd,r)=>rd.forEach((m,i)=>{
-    if(r>0){m.a=winSlot(R[r-1][2*i]);m.b=winSlot(R[r-1][2*i+1])}
+    if(r>0){
+      if(m.auto){m.w=null;delete m.auto}
+      m.a=winSlot(R[r-1][2*i]);m.b=winSlot(R[r-1][2*i+1]);
+      if(!m.w){
+        if(m.b&&!m.a&&dead(r-1,2*i)){m.w=m.b.i;m.auto=true}
+        else if(m.a&&!m.b&&dead(r-1,2*i+1)){m.w=m.a.i;m.auto=true}
+      }
+    }
     else{const x=!!m.a,y=!!m.b;if(x&&!y)m.w=m.a.i;else if(y&&!x)m.w=m.b.i}
     if(m.sk&&m.sk!==((m.a?m.a.i:'')+'|'+(m.b?m.b.i:''))){m.w=null;delete m.sa;delete m.sb;delete m.sk}
     if(m.w&&!((m.a&&m.a.i===m.w)||(m.b&&m.b.i===m.w)))m.w=null;
